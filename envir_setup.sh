@@ -20,8 +20,8 @@ sudo apt-get install cuda
 nvidia-smi
 
 echo "Installing cuDNN"
-wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cudnn-8.0-linux-x64-v6.0.tgz
-tar -xzvf cudnn-8.0-linux-x64-v5.1.tgz
+wget http://developer.download.nvidia.com/compute/redist/cudnn/v6.0/cudnn-8.0-linux-x64-v6.0.tgz
+tar -xzvf cudnn-8.0-linux-x64-v6.0.tgz
 sudo cp cuda/include/cudnn.h /usr/local/cuda/include
 sudo cp cuda/lib64/libcudnn* /usr/local/cuda/lib64
 sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
