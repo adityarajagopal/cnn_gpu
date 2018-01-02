@@ -20,7 +20,7 @@ def cnn_model_fn(features, labels, mode) :
         filters = 32, 
         kernel_size = [5,5], 
         padding="same", 
-        actiavtion=tf.nn.relu
+        activation=tf.nn.relu
     )
     # the output of this will produce an output of size [batch_size, 28, 28, 32] 
     # (one channel corresponding to each filter)
@@ -112,7 +112,7 @@ def cnn_model_fn(features, labels, mode) :
         eval_metric_ops=eval_metric_ops
     )
 
-def main() : 
+def main(unused_argv) : 
     mnist = tf.contrib.learn.datasets.load_dataset("mnist")
     train_data = mnist.train.images 
     train_labels = np.asarray(mnist.train.labels, dtype=np.int32)
@@ -123,12 +123,12 @@ def main() :
     # TRAIN, EVAL, and PREDICT stages
     mnist_classifier = tf.estimator.Estimator (
         model_fn = cnn_model_fn, 
-        model_dir = tmp/mnist_convnet_model
+        model_dir = "tmp/mnist_convnet_model"
     )
     
     tensors_to_log = {"probabilities" : "softmax_tensor"}
     logging_hook = tf.train.LoggingTensorHook (
-        tensors = tensors_to_log, 
+        # tensors = tensors_to_log, 
         every_n_iter = 50
     )
 
@@ -154,8 +154,6 @@ def main() :
         shuffle = False
     )
     eval_results = mnist_classifier.evaluate(input_fn = eval_input_fn)
-    print(eval_results)
-
 
 if __name__ == "__main__" : 
     tf.app.run()
