@@ -126,11 +126,11 @@ def main(unused_argv) :
         model_dir = "tmp/mnist_convnet_model"
     )
     
-    tensors_to_log = {"probabilities" : "softmax_tensor"}
-    logging_hook = tf.train.LoggingTensorHook (
-        # tensors = tensors_to_log, 
-        every_n_iter = 50
-    )
+    # tensors_to_log = {"probabilities" : "softmax_tensor"}
+    # logging_hook = tf.train.LoggingTensorHook (
+    #     tensors = tensors_to_log, 
+    #     every_n_iter = 50
+    # )
 
     # train model 
     train_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -143,7 +143,7 @@ def main(unused_argv) :
     mnist_classifier.train(
         input_fn = train_input_fn, 
         steps = 20000, 
-        hooks = [logging_hook]
+        # hooks = [logging_hook]
     )
 
     # evaluate model 
