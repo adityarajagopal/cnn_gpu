@@ -110,10 +110,10 @@ def model_lenet5 (dtype, trainVar, nbatch) :
     logits = tf.matmul (layer4_actv, trainVar['w5']) + trainVar['b5']
 
     target = tf.placeholder(tf.float32, shape=(None,10))
-
+    
     loss = tf.losses.softmax_cross_entropy (
-        target, 
-        tf.cast(logits, tf.float32)
+        onehot_labels=target, 
+        logits=tf.cast(logits, tf.float32)
     )
 
     return data, target, loss
@@ -128,7 +128,7 @@ def main() :
     numSteps = 10000
     displayStep = 50      
     learningRate = 0.001
-    nBatch = 64
+    nBatch = 128
     lossScale = 128
     dtype = tf.float16
     
@@ -148,11 +148,15 @@ def main() :
    
     for step in xrange(numSteps) : 
         offset = step * nBatch
+	if offset+nBatch > len(train_data)-1 : 
+		nBatch = len(train_data)-1-offset
         batch_data = np.reshape(train_data[offset:(offset+nBatch),:], (-1,28,28,1))
         batch_labels = np.eye(10)[np.array(train_labels[offset:(offset+nBatch)]).reshape(-1)]
         feed_dict = {data: batch_data, target: batch_labels}
         step_loss, _ = sess.run([loss, trainingStep], feed_dict=feed_dict)
         print ('%4i %6f' % (step + 1, step_loss))
+	if offset+nBatch == len(train_data)-1 : 	
+	    break
 
 if __name__ == "__main__" : 
     main()
