@@ -66,7 +66,7 @@ def variables_lenet5 (dtype) :
              'b1':b1, 'b2':b2, 'b3':b3, 'b4':b4, 'b5':b5}
 
 def model_lenet5 (dtype, trainVar, nbatch) :
-    data = tf.placeholder (dtype, shape=(nbatch,28,28,1))
+    data = tf.placeholder (dtype, shape=(None,28,28,1))
 
     layer1_conv = tf.nn.conv2d (
         data, 
@@ -93,10 +93,14 @@ def model_lenet5 (dtype, trainVar, nbatch) :
         value=layer2_actv, 
         ksize=[1,2,2,1], 
         strides=[1,2,2,1], 
-        padding='VALID'
+        padding='VALID',
+	name='l2_avg_pool'
     )
-    
-    flat_layer = tf.contrib.layers.flatten (layer2_pool)
+    	
+    # flat_layer = tf.contrib.layers.flatten (layer2_pool)
+    shape = layer2_pool.get_shape().as_list()
+    dim = np.prod(shape[1:])
+    flat_layer = tf.reshape(layer2_pool, [-1, dim])
     layer3_fc = tf.matmul (flat_layer, trainVar['w3']) + trainVar['b3']
     layer3_actv = tf.sigmoid (layer3_fc)
 
@@ -105,7 +109,7 @@ def model_lenet5 (dtype, trainVar, nbatch) :
 
     logits = tf.matmul (layer4_actv, trainVar['w5']) + trainVar['b5']
 
-    target = tf.placeholder(tf.float32, shape=(nbatch,10))
+    target = tf.placeholder(tf.float32, shape=(None,10))
 
     loss = tf.losses.softmax_cross_entropy (
         target, 
@@ -124,7 +128,7 @@ def main() :
     numSteps = 10000
     displayStep = 50      
     learningRate = 0.001
-    nBatch = 128
+    nBatch = 64
     lossScale = 128
     dtype = tf.float16
     
