@@ -4,8 +4,9 @@ from __future__ import print_function
 
 import numpy as np 
 import tensorflow as tf 
+from tensorflow.python import debug as tf_debug
 
-tf.logging.set_verbosity(tf.logging.INFO)
+tf.logging.set_verbosity(tf.logging.DEBUG)
 
 def float32_variable_storage_getter (
         getter, name, shape=None, dtype=None,
@@ -94,9 +95,10 @@ def model_lenet5 (dtype, trainVar, nbatch) :
         ksize=[1,2,2,1], 
         strides=[1,2,2,1], 
         padding='VALID',
-	name='l2_avg_pool'
+    name='l2_avg_pool'
     )
-    	
+    
+        
     # flat_layer = tf.contrib.layers.flatten (layer2_pool)
     shape = layer2_pool.get_shape().as_list()
     dim = np.prod(shape[1:])
@@ -108,15 +110,17 @@ def model_lenet5 (dtype, trainVar, nbatch) :
     layer4_actv = tf.sigmoid (layer4_fc)
 
     logits = tf.matmul (layer4_actv, trainVar['w5']) + trainVar['b5']
-
+    
     target = tf.placeholder(tf.float32, shape=(None,10))
+    
+    predictions = tf.argmax(logits, axis=1)
     
     loss = tf.losses.softmax_cross_entropy (
         onehot_labels=target, 
         logits=tf.cast(logits, tf.float32)
     )
 
-    return data, target, loss
+    return data, target, loss, predictions
     
 def main() : 
     mnist = tf.contrib.learn.datasets.load_dataset("mnist")
@@ -127,17 +131,17 @@ def main() :
 
     numSteps = 10000
     displayStep = 50      
-    learningRate = 0.001
-    nBatch = 128
-    lossScale = 128
-    dtype = tf.float16
+    learningRate = 0.1
+    nBatch = 1
+    lossScale = 1
+    dtype = tf.float32
     
     with tf.variable_scope (
         'fp32_storage', 
         custom_getter= float32_variable_storage_getter
     ) : 
         trainVar = variables_lenet5 (dtype)
-        data, target, loss = model_lenet5 (dtype, trainVar, nBatch)
+        data, target, loss, predictions = model_lenet5 (dtype, trainVar, nBatch)
         variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
         grads = gradients_with_loss_scaling (loss, variables, lossScale)
         optimiser = tf.train.GradientDescentOptimizer (learningRate)
@@ -145,18 +149,24 @@ def main() :
         
     sess = tf.Session () 
     sess.run (tf.global_variables_initializer())
-   
+    # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+ 
     for step in xrange(numSteps) : 
         offset = step * nBatch
-	if offset+nBatch > len(train_data)-1 : 
-		nBatch = len(train_data)-1-offset
+        if (offset+nBatch > len(train_data)-1) : 
+            nBatch = len(train_data)-1-offset
         batch_data = np.reshape(train_data[offset:(offset+nBatch),:], (-1,28,28,1))
         batch_labels = np.eye(10)[np.array(train_labels[offset:(offset+nBatch)]).reshape(-1)]
         feed_dict = {data: batch_data, target: batch_labels}
-        step_loss, _ = sess.run([loss, trainingStep], feed_dict=feed_dict)
-        print ('%4i %6f' % (step + 1, step_loss))
-	if offset+nBatch == len(train_data)-1 : 	
-	    break
+        # pred, step_loss, _ = sess.run([predictions, loss, trainingStep], feed_dict=feed_dict)
+        pred, step_loss = sess.run([trainingStep, loss], feed_dict=feed_dict)
+        if (step % displayStep == 0) : 
+            # print (sess.run(trainVar['w1']))
+            print (train_labels[offset:(offset+nBatch)])
+            print (pred)
+            print ('%4i %6f' % (step + 1, step_loss))
+        if (offset+nBatch == len(train_data)-1) :     
+            break
 
 if __name__ == "__main__" : 
     main()
