@@ -122,7 +122,7 @@ def main() :
     eval_labels = np.asarray(mnist.test.labels, dtype=np.int32)
 
     numSteps = 10000
-    displayStep = 50      
+    displayStep = 500      
     learningRate = 0.001
     nBatch = 128
     lossScale = 128
