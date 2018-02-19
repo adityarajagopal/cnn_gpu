@@ -8,6 +8,8 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 
+import sys
+
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -36,7 +38,6 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
-
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
@@ -91,15 +92,10 @@ if args.cuda:
     else : 
         model.cuda()
 
-optimizer = None 
 masterCopy = None
 if args.fp16 : 
     masterCopy = [param.clone().type(torch.cuda.FloatTensor).detach() for param in model.parameters()]
-    for param in masterCopy : 
-        param.requires_grad = True
-    optimizer = optim.SGD(masterCopy, lr=args.lr, momentum=args.momentum)
-else : 
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
 def train(epoch):
     model.train()
@@ -117,30 +113,33 @@ def train(epoch):
         if args.fp16 :
             loss = loss * args.sf
         loss.backward()
-        
+
+        params = list(model.parameters())
         if args.fp16 :   
-            params = list(model.parameters())
             applyGrad = True
             for param in params : 
-                if np.isnan(np.sum(param.cpu().numpy())) or np.isinf(np.sum(param.cpu().nump())): 
-                    print ("Nan/Inf found") 
-                    args.sf /= 2.0
-                    applyGrad = False
-                    break 
-                args.sf *= 2.0
+                param.grad.data /= args.sf
+            # for param in params : 
+            #     if np.isnan(np.sum(param.cpu().numpy())) or np.isinf(np.sum(param.cpu().nump())): 
+            #         print ("Nan/Inf found") 
+            #         args.sf /= 2.0
+            #         applyGrad = False
+            #         break 
+            #     args.sf *= 2.0
             if applyGrad == True : 
-                for i in range(len(params)) :
-                    masterCopy[i].data -= (args.lr * (params[i].grad.data.type(torch.cuda.FloatTensor)/args.sf))
-        
+                for i in range(len(masterCopy)) :
+                    masterCopy[i].data -= (args.lr * params[i].grad.data.type(torch.cuda.FloatTensor))
+
         optimizer.step()
         
-        # for i in range(len(params)) : 
-        #     params[i].data.copy_(masterCopy[i].data)
+        if args.fp16 : 
+            for i in range(len(params)) : 
+                params[i].data = masterCopy[i].data.half()
         
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.data[0]))
+                 100. * batch_idx / len(train_loader), loss.data[0]/args.sf))
 
 def test():
     model.eval()
@@ -148,9 +147,12 @@ def test():
     correct = 0
     for data, target in test_loader:
         if args.cuda:
-            data, target = data.cuda(), target.cuda()
+            if args.fp16 : 
+                data, target = data.cuda().half(), target.cuda()
+            else : 
+                data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
-        output = model(data)
+        output = model.forward(data)
         test_loss += F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
