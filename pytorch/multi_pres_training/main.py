@@ -2,6 +2,7 @@ from __future__ import print_function
 import argparse
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -73,6 +74,9 @@ masterCopy = list(model32.parameters())
 optimiser16 = optim.SGD(model16.parameters(), lr=args.lr, momentum=args.momentum)
 optimiser32 = optim.SGD(model32.parameters(), lr=args.lr, momentum=args.momentum)
 
+iteration = []
+trainLoss = []
+
 def train16 (epoch, batch_idx, data, target, model, optimiser) : 
     model.train()
     
@@ -104,6 +108,8 @@ def train16 (epoch, batch_idx, data, target, model, optimiser) :
         print('Train Epoch (half) : {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
             epoch, batch_idx * len(data), len(train_loader.dataset),
                  100. * batch_idx / len(train_loader), loss.data[0]/args.sf))
+        iteration.append((epoch-1) * len(train_loader.dataset) + batch_idx * len(data))
+        trainLoss.append(loss.data[0]/args.sf)
 
 def train32(epoch, batch_idx, data, target, model, optimizer):
     model.train()
@@ -123,6 +129,8 @@ def train32(epoch, batch_idx, data, target, model, optimizer):
         print('Train Epoch (full) : {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
             epoch, batch_idx * len(data), len(train_loader.dataset),
              100. * batch_idx / len(train_loader), loss.data[0]))
+        iteration.append((epoch-1) * len(train_loader.dataset) + batch_idx * len(data))
+        trainLoss.append(loss.data[0])
 
 def test(model):
     model.eval()
@@ -166,6 +174,9 @@ def main() :
                     fullTrainCount = 10
         
         test(model32)
+
+    plt.plot(iteration, trainLoss)
+    plt.show()
 
 if __name__ == "__main__" : 
     main()
